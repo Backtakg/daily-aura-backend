@@ -376,20 +376,20 @@ def get_daily_tarot():
 def get_daily_tarot():
 day_of_year = get_today().timetuple().tm_yday
 
-```
+
 return TAROT_CARDS[
     (day_of_year - 1) % len(TAROT_CARDS)
 ]
-```
+
 
 def get_fallback_quote():
 day_of_year = get_today().timetuple().tm_yday
 
-```
+
 return FALLBACK_QUOTES[
     (day_of_year - 1) % len(FALLBACK_QUOTES)
 ]
-```
+
 
 # ============================================================
 
@@ -399,7 +399,7 @@ return FALLBACK_QUOTES[
 
 async def fetch_internet_quote():
 
-```
+
 url = "https://zenquotes.io/api/today"
 
 try:
