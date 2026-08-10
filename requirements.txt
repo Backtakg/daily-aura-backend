@@ -1,4 +1,4 @@
 fastapi
-uvicorn[standard]
-pywebpush
+uvicorn
+httpx
 pydantic
