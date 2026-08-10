@@ -9,7 +9,11 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+try:
 from pywebpush import webpush, WebPushException
+PYWEBPUSH_AVAILABLE = True
+except ImportError:
+PYWEBPUSH_AVAILABLE = False
 
 # ============================================================
 
@@ -17,14 +21,7 @@ from pywebpush import webpush, WebPushException
 
 # ============================================================
 
-APP_NAME = "Daily Aura"
 TIMEZONE = ZoneInfo("Asia/Kathmandu")
-
-# ============================================================
-
-# VAPID CONFIGURATION
-
-# ============================================================
 
 VAPID_PRIVATE_KEY = os.getenv("VAPID_PRIVATE_KEY", "")
 VAPID_PUBLIC_KEY = os.getenv("VAPID_PUBLIC_KEY", "")
@@ -33,29 +30,15 @@ VAPID_EMAIL = os.getenv(
 "mailto:admin@example.com"
 )
 
-# ============================================================
+# Temporary in-memory storage.
 
-# TEMPORARY SUBSCRIPTION STORAGE
-
-# ============================================================
-
-# IMPORTANT:
-
-# This is temporary memory storage.
-
-# Subscriptions disappear if Render restarts the service.
-
-#
-
-# Later we can connect this to a database.
-
-# ============================================================
+# Subscriptions disappear when the Render service restarts.
 
 subscriptions = {}
 
 # ============================================================
 
-# HOROSCOPE DATA
+# HOROSCOPES
 
 # ============================================================
 
@@ -63,99 +46,63 @@ HOROSCOPES = {
 "Aries": {
 "symbol": "♈",
 "vedic": "Mesha",
-"reading": (
-"Today is a good day to take initiative. "
-"Trust your ideas and move forward with confidence."
-),
+"reading": "Today is a good day to take initiative. Trust your ideas and move forward with confidence."
 },
 "Taurus": {
 "symbol": "♉",
 "vedic": "Vrishabha",
-"reading": (
-"Patience can bring better results today. "
-"Focus on steady progress."
-),
+"reading": "Patience can bring better results today. Focus on steady progress."
 },
 "Gemini": {
 "symbol": "♊",
 "vedic": "Mithuna",
-"reading": (
-"Communication is your strength today. "
-"A conversation may open a new opportunity."
-),
+"reading": "Communication is your strength today. A conversation may open a new opportunity."
 },
 "Cancer": {
 "symbol": "♋",
 "vedic": "Karka",
-"reading": (
-"Listen to your intuition today. "
-"Spend quality time with people you care about."
-),
+"reading": "Listen to your intuition today. Spend quality time with people you care about."
 },
 "Leo": {
 "symbol": "♌",
 "vedic": "Simha",
-"reading": (
-"Your confidence can attract attention today. "
-"Use your energy wisely."
-),
+"reading": "Your confidence can attract attention today. Use your energy wisely."
 },
 "Virgo": {
 "symbol": "♍",
 "vedic": "Kanya",
-"reading": (
-"Small details matter today. "
-"Organize your priorities and stay focused."
-),
+"reading": "Small details matter today. Organize your priorities and stay focused."
 },
 "Libra": {
 "symbol": "♎",
 "vedic": "Tula",
-"reading": (
-"Balance is important today. "
-"Think carefully before making decisions."
-),
+"reading": "Balance is important today. Think carefully before making decisions."
 },
 "Scorpio": {
 "symbol": "♏",
 "vedic": "Vrishchika",
-"reading": (
-"Your determination is strong today. "
-"Focus that energy on one meaningful goal."
-),
+"reading": "Your determination is strong today. Focus that energy on one meaningful goal."
 },
 "Sagittarius": {
 "symbol": "♐",
 "vedic": "Dhanu",
-"reading": (
-"A fresh perspective can change your day. "
-"Stay curious and explore new ideas."
-),
+"reading": "A fresh perspective can change your day. Stay curious and explore new ideas."
 },
 "Capricorn": {
 "symbol": "♑",
 "vedic": "Makara",
-"reading": (
-"Consistent effort is your advantage today. "
-"Keep working toward your long-term goals."
-),
+"reading": "Consistent effort is your advantage today. Keep working toward your long-term goals."
 },
 "Aquarius": {
 "symbol": "♒",
 "vedic": "Kumbha",
-"reading": (
-"An original idea may be worth pursuing today. "
-"Share your thoughts with others."
-),
+"reading": "An original idea may be worth pursuing today. Share your thoughts with others."
 },
 "Pisces": {
 "symbol": "♓",
 "vedic": "Meena",
-"reading": (
-"Your creativity and empathy are strong today. "
-"Give yourself some quiet time."
-),
-},
+"reading": "Your creativity and empathy are strong today. Give yourself some quiet time."
+}
 }
 
 # ============================================================
@@ -171,7 +118,7 @@ QUOTES = [
 "Believe in the progress you cannot yet see.",
 "Start where you are. Make today count.",
 "You don't need to be perfect. Just keep moving.",
-"Every morning is another chance to begin again.",
+"Every morning is another chance to begin again."
 ]
 
 # ============================================================
@@ -184,101 +131,75 @@ TAROT_CARDS = [
 {
 "name": "The Fool",
 "symbol": "🌟",
-"meaning": (
-"A new beginning is opening before you. "
-"Stay curious and trust yourself."
-),
-"advice": "Don't be afraid to start something new.",
+"meaning": "A new beginning is opening before you. Stay curious and trust yourself.",
+"advice": "Don't be afraid to start something new."
 },
 {
 "name": "The Magician",
 "symbol": "✨",
-"meaning": (
-"You have the skills and resources needed "
-"to turn an idea into reality."
-),
-"advice": "Use what you already have and take action.",
+"meaning": "You have the skills and resources needed to turn an idea into reality.",
+"advice": "Use what you already have and take action."
 },
 {
 "name": "The High Priestess",
 "symbol": "🌙",
-"meaning": (
-"Your intuition is especially strong today. "
-"Some answers may come from within."
-),
-"advice": "Slow down and listen to your intuition.",
+"meaning": "Your intuition is especially strong today. Some answers may come from within.",
+"advice": "Slow down and listen to your intuition."
 },
 {
 "name": "The Empress",
 "symbol": "🌸",
-"meaning": (
-"Growth, creativity and abundance surround you."
-),
-"advice": "Nurture yourself and what matters to you.",
+"meaning": "Growth, creativity and abundance surround you.",
+"advice": "Nurture yourself and what matters to you."
 },
 {
 "name": "The Emperor",
 "symbol": "👑",
-"meaning": (
-"Structure and discipline can help you create stability."
-),
-"advice": "Take control of what you can.",
+"meaning": "Structure and discipline can help you create stability.",
+"advice": "Take control of what you can."
 },
 {
 "name": "The Lovers",
 "symbol": "💞",
-"meaning": (
-"Connection and important choices are highlighted today."
-),
-"advice": "Choose with honesty and intention.",
+"meaning": "Connection and important choices are highlighted today.",
+"advice": "Choose with honesty and intention."
 },
 {
 "name": "The Chariot",
 "symbol": "🏆",
 "meaning": "Determination can move you forward.",
-"advice": "Stay focused on your direction.",
+"advice": "Stay focused on your direction."
 },
 {
 "name": "Strength",
 "symbol": "🦁",
-"meaning": (
-"Real strength comes from patience, "
-"compassion and confidence."
-),
-"advice": "Be patient with yourself and others.",
+"meaning": "Real strength comes from patience, compassion and confidence.",
+"advice": "Be patient with yourself and others."
 },
 {
 "name": "The Star",
 "symbol": "⭐",
 "meaning": "Hope and renewal are highlighted today.",
-"advice": "Let hope guide your next step.",
+"advice": "Let hope guide your next step."
 },
 {
 "name": "The Sun",
 "symbol": "☀️",
-"meaning": (
-"Positive energy, clarity and confidence "
-"are around you."
-),
-"advice": "Let yourself enjoy today's good moments.",
+"meaning": "Positive energy, clarity and confidence are around you.",
+"advice": "Let yourself enjoy today's good moments."
 },
 {
 "name": "The Moon",
 "symbol": "🌙",
-"meaning": (
-"Not everything is clear yet. "
-"Give yourself time before making decisions."
-),
-"advice": "Look beyond first impressions.",
+"meaning": "Not everything is clear yet. Give yourself time before making decisions.",
+"advice": "Look beyond first impressions."
 },
 {
 "name": "The World",
 "symbol": "🌎",
 "meaning": "A cycle may be reaching completion.",
-"advice": (
-"Celebrate progress and prepare for what's next."
-),
-},
+"advice": "Celebrate progress and prepare for what's next."
+}
 ]
 
 # ============================================================
@@ -301,7 +222,7 @@ endpoint: str
 
 # ============================================================
 
-# DATE / DAILY CONTENT HELPERS
+# HELPERS
 
 # ============================================================
 
@@ -310,77 +231,84 @@ return datetime.now(TIMEZONE)
 
 def get_daily_quote():
 day_of_year = get_today().timetuple().tm_yday
-
-```
-return QUOTES[
-    (day_of_year - 1) % len(QUOTES)
-]
-```
+return QUOTES[(day_of_year - 1) % len(QUOTES)]
 
 def get_daily_tarot():
 day_of_year = get_today().timetuple().tm_yday
+return TAROT_CARDS[(day_of_year - 1) % len(TAROT_CARDS)]
 
-```
-return TAROT_CARDS[
-    (day_of_year - 1) % len(TAROT_CARDS)
-]
-```
-
-def get_notification_content(
-horoscope_name: str,
-language: str = "en",
-):
+def get_daily_content(horoscope_name):
 horoscope = HOROSCOPES.get(horoscope_name)
 
 ```
 if not horoscope:
     return None
 
-quote = get_daily_quote()
-tarot = get_daily_tarot()
+return {
+    "date": get_today().date().isoformat(),
+    "horoscope": {
+        "name": horoscope_name,
+        "symbol": horoscope["symbol"],
+        "vedic": horoscope["vedic"],
+        "reading": horoscope["reading"]
+    },
+    "tarot": get_daily_tarot(),
+    "quote": get_daily_quote()
+}
+```
 
-# English is currently the default notification language.
-# Additional translations can be added later.
+def get_notification_content(horoscope_name, language="en"):
+data = get_daily_content(horoscope_name)
+
+```
+if not data:
+    return None
+
+horoscope = data["horoscope"]
+tarot = data["tarot"]
+quote = data["quote"]
+
 title = "Daily Aura ✨"
 
 body = (
-    f"{horoscope['symbol']} "
-    f"{horoscope_name} Horoscope: "
-    f"{horoscope['reading']} "
-    f"🃏 Tarot: {tarot['name']} "
-    f"✨ Quote: “{quote}”"
+    f'{horoscope["symbol"]} {horoscope_name} Horoscope: '
+    f'{horoscope["reading"]} '
+    f'🃏 Tarot: {tarot["name"]} '
+    f'✨ Quote: "{quote}"'
 )
 
 return {
     "title": title,
     "body": body,
-    "tarot": tarot["name"],
-    "quote": quote,
     "url": "/",
+    "tarot": tarot["name"],
+    "quote": quote
 }
 ```
 
 # ============================================================
 
-# SEND ONE PUSH NOTIFICATION
+# PUSH NOTIFICATION
 
 # ============================================================
 
 def send_notification(user_data):
 if not VAPID_PRIVATE_KEY:
-print(
-"VAPID_PRIVATE_KEY is not configured."
-)
+print("VAPID_PRIVATE_KEY is not configured.")
 return False
 
 ```
+if not PYWEBPUSH_AVAILABLE:
+    print("pywebpush is not installed.")
+    return False
+
 subscription = user_data["subscription"]
 horoscope_name = user_data["horoscope"]
 language = user_data.get("language", "en")
 
 content = get_notification_content(
     horoscope_name,
-    language,
+    language
 )
 
 if not content:
@@ -391,7 +319,7 @@ payload = {
     "body": content["body"],
     "url": content["url"],
     "tarot": content["tarot"],
-    "quote": content["quote"],
+    "quote": content["quote"]
 }
 
 try:
@@ -401,78 +329,57 @@ try:
         vapid_private_key=VAPID_PRIVATE_KEY,
         vapid_claims={
             "sub": VAPID_EMAIL
-        },
+        }
     )
 
     return True
 
 except WebPushException as error:
-    print(
-        "Push notification failed:",
-        error,
-    )
+    print("Push notification failed:", error)
     return False
 
 except Exception as error:
-    print(
-        "Unexpected notification error:",
-        error,
-    )
+    print("Unexpected notification error:", error)
     return False
 ```
 
 # ============================================================
 
-# SEND ALL MORNING NOTIFICATIONS
+# SEND MORNING NOTIFICATIONS
 
 # ============================================================
 
 def send_morning_notifications():
-print(
-"===================================="
-)
+print("====================================")
+print("Sending Daily Aura notifications...")
+print("Time:", get_today().isoformat())
+print("Subscribers:", len(subscriptions))
+print("====================================")
 
 ```
-print(
-    "Sending Daily Aura notifications..."
-)
+sent = 0
 
-print(
-    "Time:",
-    get_today().isoformat(),
-)
-
-print(
-    "Subscribers:",
-    len(subscriptions),
-)
-
-print(
-    "===================================="
-)
-
-for endpoint, user_data in list(
-    subscriptions.items()
-):
-    success = send_notification(
-        user_data
-    )
+for endpoint, user_data in list(subscriptions.items()):
+    success = send_notification(user_data)
 
     if success:
+        sent += 1
         print(
             "Notification sent:",
-            user_data["horoscope"],
+            user_data["horoscope"]
         )
     else:
         print(
             "Notification failed:",
-            user_data["horoscope"],
+            user_data["horoscope"]
         )
+
+return sent
 ```
 
 # ============================================================
 
-# BACKGROUND NOTIFICATION SCHEDULER
+# SCHEDULER
 
 # ============================================================
 
@@ -482,7 +389,6 @@ last_sent_date = None
 ```
 while True:
     now = datetime.now(TIMEZONE)
-
     current_date = now.date()
 
     is_morning = (
@@ -496,13 +402,12 @@ while True:
     ):
         try:
             send_morning_notifications()
-
             last_sent_date = current_date
 
         except Exception as error:
             print(
                 "Scheduler error:",
-                error,
+                error
             )
 
     await asyncio.sleep(20)
@@ -515,36 +420,17 @@ while True:
 # ============================================================
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app):
 scheduler_task = asyncio.create_task(
 notification_scheduler()
 )
 
 ```
-print(
-    "-----------------------------------"
-)
-
-print(
-    "Daily Aura backend started"
-)
-
-print(
-    "Timezone: Asia/Kathmandu"
-)
-
-print(
-    "Morning notification: 08:00"
-)
-
-print(
-    "VAPID configured:",
-    bool(VAPID_PRIVATE_KEY),
-)
-
-print(
-    "-----------------------------------"
-)
+print("-----------------------------------")
+print("Daily Aura backend started")
+print("Timezone: Asia/Kathmandu")
+print("Morning notification: 08:00")
+print("-----------------------------------")
 
 try:
     yield
@@ -554,7 +440,6 @@ finally:
 
     try:
         await scheduler_task
-
     except asyncio.CancelledError:
         pass
 ```
@@ -568,7 +453,7 @@ finally:
 app = FastAPI(
 title="Daily Aura API",
 version="2.0.0",
-lifespan=lifespan,
+lifespan=lifespan
 )
 
 # ============================================================
@@ -582,7 +467,7 @@ CORSMiddleware,
 allow_origins=["*"],
 allow_credentials=True,
 allow_methods=["*"],
-allow_headers=["*"],
+allow_headers=["*"]
 )
 
 # ============================================================
@@ -594,7 +479,7 @@ allow_headers=["*"],
 @app.get("/")
 async def root():
 return {
-"app": APP_NAME,
+"app": "Daily Aura",
 "status": "online",
 "timezone": "Asia/Kathmandu",
 "notification_time": "08:00",
@@ -602,8 +487,8 @@ return {
 "Horoscope",
 "Daily Quote",
 "Daily Tarot",
-"Push Notifications",
-],
+"Push Notifications"
+]
 }
 
 # ============================================================
@@ -617,9 +502,8 @@ async def health():
 return {
 "status": "healthy",
 "subscriptions": len(subscriptions),
-"vapid_configured": bool(
-VAPID_PRIVATE_KEY
-),
+"vapid_configured": bool(VAPID_PRIVATE_KEY),
+"webpush_available": PYWEBPUSH_AVAILABLE
 }
 
 # ============================================================
@@ -632,10 +516,8 @@ VAPID_PRIVATE_KEY
 async def vapid_public_key():
 if not VAPID_PUBLIC_KEY:
 raise HTTPException(
-status_code=500,
-detail=(
-"VAPID public key is not configured."
-),
+status_code=503,
+detail="VAPID public key is not configured yet."
 )
 
 ```
@@ -651,54 +533,39 @@ return {
 # ============================================================
 
 @app.post("/subscribe")
-async def subscribe(
-request: SubscribeRequest,
-):
+async def subscribe(request: SubscribeRequest):
 if request.horoscope not in HOROSCOPES:
 raise HTTPException(
 status_code=400,
-detail="Invalid horoscope sign.",
+detail="Invalid horoscope sign."
 )
 
 ```
 if not request.subscription.endpoint:
     raise HTTPException(
         status_code=400,
-        detail=(
-            "Push subscription endpoint "
-            "is required."
-        ),
+        detail="Push subscription endpoint is required."
     )
 
 endpoint = request.subscription.endpoint
 
 subscriptions[endpoint] = {
-    "subscription":
-        request.subscription.model_dump(),
-
-    "horoscope":
-        request.horoscope,
-
-    "language":
-        request.language,
-
-    "created_at":
-        get_today().isoformat(),
+    "subscription": request.subscription.model_dump(),
+    "horoscope": request.horoscope,
+    "language": request.language,
+    "created_at": get_today().isoformat()
 }
 
 print(
     "Subscription saved:",
-    request.horoscope,
+    request.horoscope
 )
 
 return {
     "success": True,
-    "message": (
-        "Daily Aura notification "
-        "subscription saved."
-    ),
+    "message": "Daily Aura notification subscription saved.",
     "horoscope": request.horoscope,
-    "language": request.language,
+    "language": request.language
 }
 ```
 
@@ -709,20 +576,16 @@ return {
 # ============================================================
 
 @app.post("/unsubscribe")
-async def unsubscribe(
-request: UnsubscribeRequest,
-):
+async def unsubscribe(request: UnsubscribeRequest):
 subscriptions.pop(
 request.endpoint,
-None,
+None
 )
 
 ```
 return {
     "success": True,
-    "message": (
-        "Notification subscription removed."
-    ),
+    "message": "Notification subscription removed."
 }
 ```
 
@@ -733,61 +596,80 @@ return {
 # ============================================================
 
 @app.get("/daily-content/{horoscope}")
-async def daily_content(
-horoscope: str,
-):
+async def daily_content(horoscope: str):
 if horoscope not in HOROSCOPES:
 raise HTTPException(
 status_code=404,
-detail="Horoscope sign not found.",
+detail="Horoscope sign not found."
 )
 
 ```
-data = HOROSCOPES[horoscope]
+return get_daily_content(horoscope)
+```
+
+# ============================================================
+
+# LIST HOROSCOPES
+
+# ============================================================
+
+@app.get("/horoscopes")
+async def horoscopes():
+return {
+"horoscopes": [
+{
+"name": name,
+"symbol": data["symbol"],
+"vedic": data["vedic"]
+}
+for name, data in HOROSCOPES.items()
+]
+}
+
+# ============================================================
+
+# DAILY TAROT
+
+# ============================================================
+
+@app.get("/daily-tarot")
+async def daily_tarot():
 tarot = get_daily_tarot()
 
+```
 return {
-    "date":
-        get_today().date().isoformat(),
-
-    "horoscope": {
-        "name":
-            horoscope,
-
-        "symbol":
-            data["symbol"],
-
-        "vedic":
-            data["vedic"],
-
-        "reading":
-            data["reading"],
-    },
-
-    "tarot":
-        tarot,
-
-    "quote":
-        get_daily_quote(),
+    "date": get_today().date().isoformat(),
+    "tarot": tarot,
+    "free_daily_card": True,
+    "three_card_spread": "premium"
 }
 ```
 
 # ============================================================
 
-# TEST ONE HOROSCOPE NOTIFICATION
+# DAILY QUOTE
 
 # ============================================================
 
-@app.post(
-"/test-notification/{horoscope}"
-)
-async def test_notification(
-horoscope: str,
-):
+@app.get("/daily-quote")
+async def daily_quote():
+return {
+"date": get_today().date().isoformat(),
+"quote": get_daily_quote()
+}
+
+# ============================================================
+
+# TEST ONE NOTIFICATION
+
+# ============================================================
+
+@app.post("/test-notification/{horoscope}")
+async def test_notification(horoscope: str):
 if horoscope not in HOROSCOPES:
 raise HTTPException(
 status_code=400,
-detail="Invalid horoscope sign.",
+detail="Invalid horoscope sign."
 )
 
 ```
@@ -798,18 +680,16 @@ for endpoint, user_data in list(
 ):
     temporary_data = {
         **user_data,
-        "horoscope": horoscope,
+        "horoscope": horoscope
     }
 
-    if send_notification(
-        temporary_data
-    ):
+    if send_notification(temporary_data):
         sent += 1
 
 return {
     "success": True,
     "sent": sent,
-    "horoscope": horoscope,
+    "horoscope": horoscope
 }
 ```
 
@@ -824,44 +704,42 @@ async def send_morning_now():
 if not subscriptions:
 return {
 "success": False,
-"message": (
-"No notification subscriptions saved."
-),
-"sent": 0,
+"message": "No notification subscriptions saved.",
+"sent": 0
 }
 
 ```
-sent = 0
-
-for endpoint, user_data in list(
-    subscriptions.items()
-):
-    if send_notification(
-        user_data
-    ):
-        sent += 1
+sent = send_morning_notifications()
 
 return {
     "success": True,
-    "message": (
-        "Morning notification test completed."
-    ),
-    "sent": sent,
+    "message": "Morning notification test completed.",
+    "sent": sent
 }
 ```
 
-"""
+### Important
 
-Replace the existing `main.py` completely with this version, commit the change to GitHub, and let Render redeploy.
+Your Render **build already succeeds** now. The current failure is only because `main.py` contains formatting/code-block text instead of pure Python.
 
-Your Render settings should remain:
+After replacing it:
 
-Build Command:
+**Render Build Command**
+
+```text
 pip install -r requirements.txt
+```
 
-Start Command:
+**Render Start Command**
+
+```text
 uvicorn main:app --host 0.0.0.0 --port $PORT
+```
 
-Do not put the VAPID private key in this file. Add it later in Render → Environment.
+You **do not need VAPID keys just to start the backend**. The API will run without them. Push notifications simply won't work until you generate and add:
 
-For now, the backend can start without VAPID keys. Push notifications simply won't send until the VAPID variables are configured.
+* `VAPID_PRIVATE_KEY`
+* `VAPID_PUBLIC_KEY`
+* `VAPID_EMAIL`
+
+First deploy this clean `main.py`. Once Render shows **Live**, we can set up VAPID and connect your frontend push notifications.
