@@ -1,4 +1,4 @@
-```python
+
 import os
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -442,4 +442,4 @@ async def notifications_removed():
         "enabled": False,
         "message": "Notifications have been removed from Daily Aura."
     }
-```
+
