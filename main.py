@@ -350,9 +350,7 @@ TAROT_CARDS = [
 ]
 
 # ============================================================
-
-# DATE HELPERS
-
+# DAILY CONTENT HELPERS
 # ============================================================
 
 def get_today():
@@ -364,32 +362,46 @@ def get_daily_quote():
     quote = QUOTES[(day_of_year - 1) % len(QUOTES)]
 
     if isinstance(quote, dict):
-        return quote.get("text") or quote.get("quote") or ""
+        return str(
+            quote.get("text")
+            or quote.get("quote")
+            or quote.get("content")
+            or ""
+        )
 
     return str(quote)
 
 
 def get_daily_tarot():
     day_of_year = get_today().timetuple().tm_yday
-    return TAROT_CARDS[(day_of_year - 1) % len(TAROT_CARDS)]
-
-def get_daily_tarot():
-day_of_year = get_today().timetuple().tm_yday
-
-
-return TAROT_CARDS[
-    (day_of_year - 1) % len(TAROT_CARDS)
-]
+    return TAROT_CARDS[
+        (day_of_year - 1) % len(TAROT_CARDS)
+    ]
 
 
-def get_fallback_quote():
-day_of_year = get_today().timetuple().tm_yday
+def get_daily_content(horoscope_name):
+    horoscope = HOROSCOPES.get(horoscope_name)
 
+    if not horoscope:
+        return None
 
-return FALLBACK_QUOTES[
-    (day_of_year - 1) % len(FALLBACK_QUOTES)
-]
+    tarot = get_daily_tarot()
+    quote = get_daily_quote()
 
+    return {
+        "date": get_today().date().isoformat(),
+
+        "horoscope": {
+            "name": horoscope_name,
+            "symbol": horoscope["symbol"],
+            "vedic": horoscope["vedic"],
+            "reading": horoscope["reading"]
+        },
+
+        "tarot": tarot,
+
+        "quote": quote
+    }
 
 # ============================================================
 
