@@ -16,7 +16,7 @@ except ImportError:
     PYWEBPUSH_AVAILABLE = False
 
 # ============================================================
-# DAILY AURA BACKEND
+# CONFIGURATION
 # ============================================================
 
 TIMEZONE = ZoneInfo("Asia/Kathmandu")
@@ -25,9 +25,21 @@ VAPID_PRIVATE_KEY = os.getenv("VAPID_PRIVATE_KEY", "")
 VAPID_PUBLIC_KEY = os.getenv("VAPID_PUBLIC_KEY", "")
 VAPID_EMAIL = os.getenv("VAPID_EMAIL", "mailto:admin@example.com")
 
-# Temporary in-memory storage.
-# Subscriptions disappear when the Render service restarts.
 subscriptions = {}
+
+# ============================================================
+# FASTAPI APP INSTANCE (This was missing!)
+# ============================================================
+
+app = FastAPI(title="Daily Aura API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # ============================================================
 # HOROSCOPES
@@ -263,7 +275,7 @@ def get_notification_content(horoscope_name, language="en"):
     }
 
 # ============================================================
-# PUSH NOTIFICATION
+# PUSH NOTIFICATION SENDER
 # ============================================================
 
 def send_notification(user_data):
@@ -308,3 +320,14 @@ def send_notification(user_data):
     except Exception as error:
         print("Unexpected notification error:", error)
         return False
+
+# ============================================================
+# API ROUTE PATHS
+# ============================================================
+
+@app.get("/")
+def home():
+    return {"status": "online", "message": "Welcome to Daily Aura"}
+
+@app.get("/api/daily/{horoscope_name}")
+def get_daily_dashboard(horoscope_name: str):
