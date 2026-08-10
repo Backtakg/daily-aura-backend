@@ -741,3 +741,42 @@ async def send_morning_now():
         "message": "Morning notification test completed.",
         "sent": sent
     }
+    @app.get("/health")
+def health():
+    return {
+        "status": "healthy",
+        "service": "Daily Aura",
+        "timezone": "Asia/Kathmandu"
+    }
+
+
+@app.get("/daily-tarot")
+def daily_tarot():
+    return {
+        "date": get_today().date().isoformat(),
+        "tarot": get_daily_tarot()
+    }
+
+
+@app.get("/daily-quote")
+def daily_quote():
+    return {
+        "date": get_today().date().isoformat(),
+        "quote": get_daily_quote()
+    }
+
+
+@app.get("/daily-content/{horoscope_name}")
+def daily_content(horoscope_name: str):
+    name = horoscope_name.strip().capitalize()
+
+    content = get_daily_content(name)
+
+    if not content:
+        raise HTTPException(
+            status_code=404,
+            detail="Horoscope sign not found"
+        )
+
+    return content
+    
