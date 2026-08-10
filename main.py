@@ -1,7 +1,4 @@
 import os
-import json
-import asyncio
-from contextlib import asynccontextmanager
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -9,7 +6,6 @@ import httpx
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 
 # ============================================================
 
@@ -22,32 +18,22 @@ TIMEZONE = ZoneInfo("Asia/Kathmandu")
 
 # ============================================================
 
-# OPTIONAL VAPID CONFIGURATION
+# APP
 
 # ============================================================
 
-VAPID_PRIVATE_KEY = os.getenv("VAPID_PRIVATE_KEY", "")
-VAPID_PUBLIC_KEY = os.getenv("VAPID_PUBLIC_KEY", "")
-VAPID_EMAIL = os.getenv(
-"VAPID_EMAIL",
-"mailto:admin@example.com"
+app = FastAPI(
+title="Daily Aura API",
+version="4.0.0"
 )
 
-# pywebpush is optional.
-
-try:
-from pywebpush import webpush, WebPushException
-PYWEBPUSH_AVAILABLE = True
-except ImportError:
-PYWEBPUSH_AVAILABLE = False
-
-# ============================================================
-
-# TEMPORARY SUBSCRIPTION STORAGE
-
-# ============================================================
-
-subscriptions = {}
+app.add_middleware(
+CORSMiddleware,
+allow_origins=["*"],
+allow_credentials=False,
+allow_methods=["*"],
+allow_headers=["*"]
+)
 
 # ============================================================
 
@@ -70,8 +56,8 @@ HOROSCOPES = {
 "vedic": "Vrishabha",
 "reading": (
 "Steady progress is more valuable than rushing today. "
-"Focus on one practical goal and let consistency work in "
-"your favor."
+"Focus on one practical goal and let consistency work "
+"in your favor."
 )
 },
 "Gemini": {
@@ -79,8 +65,8 @@ HOROSCOPES = {
 "vedic": "Mithuna",
 "reading": (
 "Communication can open an unexpected door today. "
-"Listen carefully, ask questions, and don't underestimate "
-"the value of a simple conversation."
+"Listen carefully and don't underestimate the value "
+"of a simple conversation."
 )
 },
 "Cancer": {
@@ -98,7 +84,7 @@ HOROSCOPES = {
 "reading": (
 "Confidence can help you stand out today. "
 "Use your energy positively and remember that leadership "
-"also means listening to others."
+"also means listening."
 )
 },
 "Virgo": {
@@ -106,8 +92,8 @@ HOROSCOPES = {
 "vedic": "Kanya",
 "reading": (
 "Small improvements can make a noticeable difference. "
-"Organize your priorities and avoid spending energy on "
-"things that do not matter."
+"Organize your priorities and avoid spending energy "
+"on things that do not matter."
 )
 },
 "Libra": {
@@ -133,8 +119,8 @@ HOROSCOPES = {
 "vedic": "Dhanu",
 "reading": (
 "Curiosity can lead you somewhere interesting today. "
-"Explore a new idea, learn something useful, or look at "
-"an old problem from a different angle."
+"Explore a new idea or look at an old problem from "
+"a different angle."
 )
 },
 "Capricorn": {
@@ -142,8 +128,8 @@ HOROSCOPES = {
 "vedic": "Makara",
 "reading": (
 "Long-term thinking works in your favor today. "
-"A small practical action now can support a larger goal "
-"later."
+"A small practical action now can support a larger "
+"goal later."
 )
 },
 "Aquarius": {
@@ -205,7 +191,7 @@ FALLBACK_QUOTES = [
 
 # ============================================================
 
-# TAROT DATA
+# TAROT
 
 # ============================================================
 
@@ -215,8 +201,7 @@ TAROT_CARDS = [
 "symbol": "🌟",
 "meaning": (
 "A new beginning is opening before you. "
-"This card represents curiosity, freedom and the courage "
-"to take the first step."
+"This card represents curiosity, freedom and courage."
 ),
 "advice": "Don't be afraid to start something new.",
 "image_url": (
@@ -266,8 +251,7 @@ TAROT_CARDS = [
 "name": "The Emperor",
 "symbol": "👑",
 "meaning": (
-"Structure, responsibility and stability can help you "
-"move forward."
+"Structure, responsibility and stability can help you."
 ),
 "advice": "Take control of what you can.",
 "image_url": (
@@ -305,7 +289,7 @@ TAROT_CARDS = [
 "symbol": "🦁",
 "meaning": (
 "Strength comes through patience, confidence and "
-"self-control rather than force."
+"self-control."
 ),
 "advice": "Be patient with yourself and others.",
 "image_url": (
@@ -367,44 +351,7 @@ TAROT_CARDS = [
 
 # ============================================================
 
-# PYDANTIC MODELS
-
-# ============================================================
-
-class PushSubscription(BaseModel):
-endpoint: str
-keys: dict
-
-class SubscribeRequest(BaseModel):
-subscription: PushSubscription
-horoscope: str
-language: str = "en"
-
-class UnsubscribeRequest(BaseModel):
-endpoint: str
-
-# ============================================================
-
-# APP
-
-# ============================================================
-
-app = FastAPI(
-title="Daily Aura API",
-version="3.0.0"
-)
-
-app.add_middleware(
-CORSMiddleware,
-allow_origins=["*"],
-allow_credentials=False,
-allow_methods=["*"],
-allow_headers=["*"]
-)
-
-# ============================================================
-
-# TIME / DAILY HELPERS
+# DATE HELPERS
 
 # ============================================================
 
@@ -436,17 +383,12 @@ return FALLBACK_QUOTES[
 # ============================================================
 
 async def fetch_internet_quote():
-"""
-Fetches a daily quote from ZenQuotes.
 
 ```
-If the internet service fails, Daily Aura uses
-local fallback content instead.
-"""
-
 url = "https://zenquotes.io/api/today"
 
 try:
+
     timeout = httpx.Timeout(8.0)
 
     async with httpx.AsyncClient(
@@ -456,52 +398,54 @@ try:
 
         response = await client.get(url)
 
-        if response.status_code != 200:
-            return get_fallback_quote()
+        if response.status_code == 200:
 
-        data = response.json()
+            data = response.json()
 
-        if isinstance(data, list) and len(data) > 0:
+            if (
+                isinstance(data, list)
+                and len(data) > 0
+            ):
 
-            item = data[0]
+                item = data[0]
 
-            quote = item.get("q")
-            author = item.get("a")
+                quote = item.get("q")
+                author = item.get("a")
 
-            if quote:
+                if quote:
 
-                return {
-                    "quote": quote,
-                    "author": author or "Unknown",
-                    "source": "ZenQuotes"
-                }
+                    return {
+                        "quote": quote,
+                        "author": author or "Unknown",
+                        "source": "ZenQuotes",
+                        "fresh": True
+                    }
 
 except Exception as error:
-    print("Quote API unavailable:", error)
+
+    print(
+        "Internet quote error:",
+        error
+    )
 
 fallback = get_fallback_quote()
 
-fallback["source"] = "Daily Aura fallback"
-
-return fallback
+return {
+    **fallback,
+    "source": "Daily Aura fallback",
+    "fresh": False
+}
 ```
 
 # ============================================================
 
-# INTERNET ON THIS DAY DATA
+# INTERNET ON THIS DAY
 
 # ============================================================
 
 async def fetch_on_this_day():
-"""
-Fetches current-date historical events from
-the free ZenQuotes On This Day API.
 
 ```
-The result is used as an extra fresh internet-based
-Daily Aura section.
-"""
-
 now = get_today()
 
 month = now.month
@@ -513,6 +457,7 @@ url = (
 )
 
 try:
+
     timeout = httpx.Timeout(8.0)
 
     async with httpx.AsyncClient(
@@ -527,72 +472,105 @@ try:
 
         data = response.json()
 
+        source_data = data.get(
+            "data",
+            {}
+        )
+
         return {
             "source": "ZenQuotes On This Day",
             "date": f"{month:02d}-{day:02d}",
-            "events": data.get("data", {}).get(
+            "events": source_data.get(
                 "Events",
                 []
             )[:3],
-            "births": data.get("data", {}).get(
+            "births": source_data.get(
                 "Births",
                 []
             )[:3]
         }
 
 except Exception as error:
-    print("On This Day API unavailable:", error)
+
+    print(
+        "On This Day error:",
+        error
+    )
 
 return None
 ```
 
 # ============================================================
 
-# DAILY CONTENT
+# BUILD DAILY CONTENT
 
 # ============================================================
 
-async def build_daily_content(horoscope_name: str):
+async def build_daily_content(
+horoscope_name: str
+):
 
 ```
-horoscope = HOROSCOPES.get(horoscope_name)
+horoscope = HOROSCOPES.get(
+    horoscope_name
+)
 
 if not horoscope:
     return None
-
-today = get_today()
-
-tarot = get_daily_tarot()
 
 quote = await fetch_internet_quote()
 
 historical = await fetch_on_this_day()
 
+tarot = get_daily_tarot()
+
+today = get_today()
+
 return {
-    "date": today.date().isoformat(),
-    "timezone": "Asia/Kathmandu",
+
+    "success": True,
+
+    "date":
+        today.date().isoformat(),
+
+    "timezone":
+        "Asia/Kathmandu",
 
     "horoscope": {
-        "name": horoscope_name,
-        "symbol": horoscope["symbol"],
-        "vedic": horoscope["vedic"],
-        "reading": horoscope["reading"]
+
+        "name":
+            horoscope_name,
+
+        "symbol":
+            horoscope["symbol"],
+
+        "vedic":
+            horoscope["vedic"],
+
+        "reading":
+            horoscope["reading"]
     },
 
-    "tarot": tarot,
+    "tarot":
+        tarot,
 
-    "quote": quote,
+    "quote":
+        quote,
 
     "internet": {
-        "fresh": True,
-        "on_this_day": historical
+
+        "enabled":
+            True,
+
+        "on_this_day":
+            historical
     }
 }
 ```
 
 # ============================================================
 
-# ROOT / HEALTH
+# ROOT
 
 # ============================================================
 
@@ -601,46 +579,56 @@ async def root():
 
 ```
 return {
-    "status": "healthy",
-    "service": APP_NAME,
-    "version": "3.0.0",
-    "timezone": "Asia/Kathmandu"
+
+    "status":
+        "healthy",
+
+    "service":
+        APP_NAME,
+
+    "version":
+        "4.0.0",
+
+    "timezone":
+        "Asia/Kathmandu",
+
+    "notifications":
+        False,
+
+    "internet_content":
+        True
 }
 ```
+
+# ============================================================
+
+# HEALTH
+
+# ============================================================
 
 @app.get("/health")
 async def health():
 
 ```
 return {
-    "status": "healthy",
-    "service": APP_NAME,
-    "timezone": "Asia/Kathmandu",
-    "subscriptions": len(subscriptions),
-    "vapid_configured": bool(VAPID_PRIVATE_KEY),
-    "pywebpush_available": PYWEBPUSH_AVAILABLE
-}
-```
 
-# ============================================================
+    "status":
+        "healthy",
 
-# VAPID PUBLIC KEY
+    "service":
+        APP_NAME,
 
-# ============================================================
+    "version":
+        "4.0.0",
 
-@app.get("/vapid-public-key")
-async def vapid_public_key():
+    "timezone":
+        "Asia/Kathmandu",
 
-```
-if not VAPID_PUBLIC_KEY:
+    "notifications":
+        False,
 
-    raise HTTPException(
-        status_code=404,
-        detail="VAPID public key is not configured."
-    )
-
-return {
-    "publicKey": VAPID_PUBLIC_KEY
+    "internet_content":
+        True
 }
 ```
 
@@ -651,12 +639,16 @@ return {
 # ============================================================
 
 @app.get("/daily-content/{horoscope}")
-async def daily_content(horoscope: str):
+async def daily_content(
+horoscope: str
+):
 
 ```
 name = horoscope.strip().capitalize()
 
-content = await build_daily_content(name)
+content = await build_daily_content(
+    name
+)
 
 if not content:
 
@@ -670,17 +662,25 @@ return content
 
 # ============================================================
 
-# COMPATIBILITY ROUTE
+# COMPATIBILITY DAILY ROUTE
 
 # ============================================================
 
 @app.get("/api/daily/{horoscope_name}")
-async def api_daily(horoscope_name: str):
+async def api_daily(
+horoscope_name: str
+):
 
 ```
-name = horoscope_name.strip().capitalize()
+name = (
+    horoscope_name
+    .strip()
+    .capitalize()
+)
 
-content = await build_daily_content(name)
+content = await build_daily_content(
+    name
+)
 
 if not content:
 
@@ -694,7 +694,7 @@ return content
 
 # ============================================================
 
-# DAILY TAROT ONLY
+# TAROT
 
 # ============================================================
 
@@ -702,18 +702,25 @@ return content
 async def daily_tarot():
 
 ```
-tarot = get_daily_tarot()
-
 return {
-    "date": get_today().date().isoformat(),
-    "timezone": "Asia/Kathmandu",
-    "tarot": tarot
+
+    "success":
+        True,
+
+    "date":
+        get_today().date().isoformat(),
+
+    "timezone":
+        "Asia/Kathmandu",
+
+    "tarot":
+        get_daily_tarot()
 }
 ```
 
 # ============================================================
 
-# DAILY QUOTE ONLY
+# QUOTE
 
 # ============================================================
 
@@ -721,12 +728,19 @@ return {
 async def daily_quote():
 
 ```
-quote = await fetch_internet_quote()
-
 return {
-    "date": get_today().date().isoformat(),
-    "timezone": "Asia/Kathmandu",
-    "quote": quote
+
+    "success":
+        True,
+
+    "date":
+        get_today().date().isoformat(),
+
+    "timezone":
+        "Asia/Kathmandu",
+
+    "quote":
+        await fetch_internet_quote()
 }
 ```
 
@@ -742,23 +756,22 @@ async def on_this_day():
 ```
 data = await fetch_on_this_day()
 
-if not data:
-
-    return {
-        "date": get_today().date().isoformat(),
-        "available": False,
-        "message": "Internet history service unavailable."
-    }
-
 return {
-    "available": True,
-    "data": data
+
+    "success":
+        True,
+
+    "available":
+        data is not None,
+
+    "data":
+        data
 }
 ```
 
 # ============================================================
 
-# ALL SIGNS
+# ALL HOROSCOPES
 
 # ============================================================
 
@@ -767,343 +780,74 @@ async def all_horoscopes():
 
 ```
 return {
-    "date": get_today().date().isoformat(),
+
+    "success":
+        True,
+
+    "date":
+        get_today().date().isoformat(),
+
     "horoscopes": [
+
         {
-            "name": name,
-            "symbol": data["symbol"],
-            "vedic": data["vedic"]
+
+            "name":
+                name,
+
+            "symbol":
+                data["symbol"],
+
+            "vedic":
+                data["vedic"]
+
         }
-        for name, data in HOROSCOPES.items()
+
+        for name, data
+        in HOROSCOPES.items()
     ]
 }
 ```
 
 # ============================================================
 
-# SUBSCRIBE
+# 404 HANDLER
 
 # ============================================================
 
-@app.post("/subscribe")
-async def subscribe(data: SubscribeRequest):
-
-```
-horoscope = data.horoscope.strip().capitalize()
-
-if horoscope not in HOROSCOPES:
-
-    raise HTTPException(
-        status_code=400,
-        detail="Invalid horoscope sign."
-    )
-
-endpoint = data.subscription.endpoint
-
-subscriptions[endpoint] = {
-    "subscription": data.subscription.model_dump(),
-    "horoscope": horoscope,
-    "language": data.language,
-    "created_at": get_today().isoformat()
-}
-
-return {
-    "success": True,
-    "message": "Subscribed successfully.",
-    "horoscope": horoscope,
-    "language": data.language
-}
-```
-
-# ============================================================
-
-# API SUBSCRIBE COMPATIBILITY
-
-# ============================================================
-
-@app.post("/api/subscribe")
-async def api_subscribe(data: SubscribeRequest):
-
-```
-return await subscribe(data)
-```
-
-# ============================================================
-
-# UNSUBSCRIBE
-
-# ============================================================
-
-@app.post("/unsubscribe")
-async def unsubscribe(data: UnsubscribeRequest):
-
-```
-endpoint = data.endpoint
-
-if endpoint in subscriptions:
-
-    del subscriptions[endpoint]
-
-    return {
-        "success": True,
-        "message": "Unsubscribed successfully."
-    }
-
-return {
-    "success": True,
-    "message": "Subscription was already removed."
-}
-```
-
-# ============================================================
-
-# API UNSUBSCRIBE COMPATIBILITY
-
-# ============================================================
-
-@app.post("/api/unsubscribe")
-async def api_unsubscribe(data: UnsubscribeRequest):
-
-```
-return await unsubscribe(data)
-```
-
-# ============================================================
-
-# OPTIONAL PUSH NOTIFICATION
-
-# ============================================================
-
-def send_push_notification(user_data):
-
-```
-if not PYWEBPUSH_AVAILABLE:
-    print("pywebpush is not installed.")
-    return False
-
-if not VAPID_PRIVATE_KEY:
-    print("VAPID_PRIVATE_KEY is not configured.")
-    return False
-
-try:
-
-    subscription = user_data["subscription"]
-
-    horoscope_name = user_data["horoscope"]
-
-    horoscope = HOROSCOPES.get(horoscope_name)
-
-    if not horoscope:
-        return False
-
-    tarot = get_daily_tarot()
-
-    payload = {
-        "title": "Daily Aura ✨",
-        "body": (
-            f"{horoscope['symbol']} "
-            f"{horoscope_name}: "
-            f"{horoscope['reading']} "
-            f"🃏 Tarot: {tarot['name']}"
-        ),
-        "url": "/",
-        "tarot": tarot["name"],
-        "tarot_image": tarot["image_url"]
-    }
-
-    webpush(
-        subscription_info=subscription,
-        data=json.dumps(payload),
-        vapid_private_key=VAPID_PRIVATE_KEY,
-        vapid_claims={
-            "sub": VAPID_EMAIL
-        }
-    )
-
-    return True
-
-except WebPushException as error:
-
-    print("Push notification failed:", error)
-
-except Exception as error:
-
-    print("Unexpected push error:", error)
-
-return False
-```
-
-# ============================================================
-
-# SEND TEST NOTIFICATION
-
-# ============================================================
-
-@app.post("/test-notification/{horoscope}")
-async def test_notification(horoscope: str):
-
-```
-name = horoscope.strip().capitalize()
-
-if name not in HOROSCOPES:
-
-    raise HTTPException(
-        status_code=400,
-        detail="Invalid horoscope sign."
-    )
-
-sent = 0
-
-for _, user_data in list(
-    subscriptions.items()
+@app.exception_handler(404)
+async def not_found_handler(
+request,
+exc
 ):
 
-    temporary_data = {
-        **user_data,
-        "horoscope": name
-    }
-
-    if send_push_notification(
-        temporary_data
-    ):
-
-        sent += 1
-
+```
 return {
-    "success": True,
-    "sent": sent,
-    "horoscope": name
+
+    "success":
+        False,
+
+    "error":
+        "Not Found",
+
+    "path":
+        str(request.url.path),
+
+    "available_routes": [
+
+        "/",
+
+        "/health",
+
+        "/daily-content/Aries",
+
+        "/daily-tarot",
+
+        "/daily-quote",
+
+        "/on-this-day",
+
+        "/horoscopes"
+
+    ]
 }
 ```
-
-# ============================================================
-
-# MANUAL MORNING TEST
-
-# ============================================================
-
-@app.post("/send-morning-now")
-async def send_morning_now():
-
-```
-if not subscriptions:
-
-    return {
-        "success": False,
-        "message": "No notification subscriptions saved.",
-        "sent": 0
-    }
-
-sent = 0
-
-for _, user_data in list(
-    subscriptions.items()
-):
-
-    if send_push_notification(
-        user_data
-    ):
-
-        sent += 1
-
-return {
-    "success": True,
-    "message": "Morning notification test completed.",
-    "sent": sent
-}
-```
-
-# ============================================================
-
-# SCHEDULER
-
-# ============================================================
-
-async def notification_scheduler():
-
-```
-last_sent_date = None
-
-while True:
-
-    try:
-
-        now = get_today()
-
-        current_date = now.date()
-
-        if (
-            now.hour == 8
-            and now.minute == 0
-            and last_sent_date != current_date
-        ):
-
-            print(
-                "Sending Daily Aura notifications..."
-            )
-
-            for _, user_data in list(
-                subscriptions.items()
-            ):
-
-                send_push_notification(
-                    user_data
-                )
-
-            last_sent_date = current_date
-
-    except Exception as error:
-
-        print(
-            "Scheduler error:",
-            error
-        )
-
-    await asyncio.sleep(20)
-```
-
-# ============================================================
-
-# LIFESPAN
-
-# ============================================================
-
-@asynccontextmanager
-async def lifespan(application: FastAPI):
-
-```
-scheduler_task = asyncio.create_task(
-    notification_scheduler()
-)
-
-print("----------------------------------------")
-print("Daily Aura backend started")
-print("Timezone: Asia/Kathmandu")
-print("Morning notification: 08:00")
-print("Internet content: enabled")
-print("----------------------------------------")
-
-try:
-
-    yield
-
-finally:
-
-    scheduler_task.cancel()
-
-    try:
-
-        await scheduler_task
-
-    except asyncio.CancelledError:
-
-        pass
-```
-
-# ============================================================
-
-# APPLY LIFESPAN
-
-# ============================================================
-
-app.router.lifespan_context = lifespan
