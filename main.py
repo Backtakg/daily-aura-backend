@@ -356,7 +356,22 @@ TAROT_CARDS = [
 # ============================================================
 
 def get_today():
-return datetime.now(TIMEZONE)
+    return datetime.now(TIMEZONE)
+
+
+def get_daily_quote():
+    day_of_year = get_today().timetuple().tm_yday
+    quote = QUOTES[(day_of_year - 1) % len(QUOTES)]
+
+    if isinstance(quote, dict):
+        return quote.get("text") or quote.get("quote") or ""
+
+    return str(quote)
+
+
+def get_daily_tarot():
+    day_of_year = get_today().timetuple().tm_yday
+    return TAROT_CARDS[(day_of_year - 1) % len(TAROT_CARDS)]
 
 def get_daily_tarot():
 day_of_year = get_today().timetuple().tm_yday
