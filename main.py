@@ -16,7 +16,7 @@ except ImportError:
     PYWEBPUSH_AVAILABLE = False
 
 # ============================================================
-# CONFIGURATION
+# CONFIGURATION & STORAGE
 # ============================================================
 
 TIMEZONE = ZoneInfo("Asia/Kathmandu")
@@ -25,10 +25,11 @@ VAPID_PRIVATE_KEY = os.getenv("VAPID_PRIVATE_KEY", "")
 VAPID_PUBLIC_KEY = os.getenv("VAPID_PUBLIC_KEY", "")
 VAPID_EMAIL = os.getenv("VAPID_EMAIL", "mailto:admin@example.com")
 
+# Temporary in-memory storage for subscriptions
 subscriptions = {}
 
 # ============================================================
-# FASTAPI APP INSTANCE (This was missing!)
+# APP INITIALIZATION
 # ============================================================
 
 app = FastAPI(title="Daily Aura API")
@@ -42,7 +43,7 @@ app.add_middleware(
 )
 
 # ============================================================
-# HOROSCOPES
+# APP DATASETS
 # ============================================================
 
 HOROSCOPES = {
@@ -108,10 +109,6 @@ HOROSCOPES = {
     }
 }
 
-# ============================================================
-# DAILY QUOTES
-# ============================================================
-
 QUOTES = [
     "Small steps every day create big changes.",
     "Your future is created by what you do today.",
@@ -122,87 +119,23 @@ QUOTES = [
     "Every morning is another chance to begin again."
 ]
 
-# ============================================================
-# DAILY TAROT
-# ============================================================
-
 TAROT_CARDS = [
-    {
-        "name": "The Fool",
-        "symbol": "🌟",
-        "meaning": "A new beginning is opening before you. Stay curious and trust yourself.",
-        "advice": "Don't be afraid to start something new."
-    },
-    {
-        "name": "The Magician",
-        "symbol": "✨",
-        "meaning": "You have the skills and resources needed to turn an idea into reality.",
-        "advice": "Use what you already have and take action."
-    },
-    {
-        "name": "The High Priestess",
-        "symbol": "🌙",
-        "meaning": "Your intuition is especially strong today. Some answers may come from within.",
-        "advice": "Slow down and listen to your intuition."
-    },
-    {
-        "name": "The Empress",
-        "symbol": "🌸",
-        "meaning": "Growth, creativity and abundance surround you.",
-        "advice": "Nurture yourself and what matters to you."
-    },
-    {
-        "name": "The Emperor",
-        "symbol": "👑",
-        "meaning": "Structure and discipline can help you create stability.",
-        "advice": "Take control of what you can."
-    },
-    {
-        "name": "The Lovers",
-        "symbol": "💞",
-        "meaning": "Connection and important choices are highlighted today.",
-        "advice": "Choose with honesty and intention."
-    },
-    {
-        "name": "The Chariot",
-        "symbol": "🏆",
-        "meaning": "Determination can move you forward.",
-        "advice": "Stay focused on your direction."
-    },
-    {
-        "name": "Strength",
-        "symbol": "🦁",
-        "meaning": "Real strength comes from patience, compassion and confidence.",
-        "advice": "Be patient with yourself and others."
-    },
-    {
-        "name": "The Star",
-        "symbol": "⭐",
-        "meaning": "Hope and renewal are highlighted today.",
-        "advice": "Let hope guide your next step."
-    },
-    {
-        "name": "The Sun",
-        "symbol": "☀️",
-        "meaning": "Positive energy, clarity and confidence are around you.",
-        "advice": "Let yourself enjoy today's good moments."
-    },
-    {
-        "name": "The Moon",
-        "symbol": "🌙",
-        "meaning": "Not everything is clear yet. Give yourself time before making decisions.",
-        "advice": "Look beyond first impressions."
-    },
-    {
-        "name": "The World",
-        "symbol": "🌎",
-        "meaning": "A cycle may be reaching completion.",
-        "advice": "Celebrate progress and prepare for what's next."
-    }
+    {"name": "The Fool", "symbol": "🌟", "meaning": "A new beginning is opening before you.", "advice": "Don't be afraid to start something new."},
+    {"name": "The Magician", "symbol": "✨", "meaning": "You have the skills and resources needed.", "advice": "Use what you already have."},
+    {"name": "The High Priestess", "symbol": "🌙", "meaning": "Your intuition is especially strong.", "advice": "Slow down and listen."},
+    {"name": "The Empress", "symbol": "🌸", "meaning": "Growth, creativity and abundance surround you.", "advice": "Nurture yourself."},
+    {"name": "The Emperor", "symbol": "👑", "meaning": "Structure and discipline can help you.", "advice": "Take control of what you can."},
+    {"name": "The Lovers", "symbol": "💞", "meaning": "Connection and important choices are highlighted.", "advice": "Choose with honesty."},
+    {"name": "The Chariot", "symbol": "🏆", "meaning": "Determination can move you forward.", "advice": "Stay focused on your direction."},
+    {"name": "Strength", "symbol": "🦁", "meaning": "Real strength comes from patience.", "advice": "Be patient with yourself."},
+    {"name": "The Star", "symbol": "⭐", "meaning": "Hope and renewal are highlighted today.", "advice": "Let hope guide your next step."},
+    {"name": "The Sun", "symbol": "☀️", "meaning": "Positive energy, clarity and confidence abound.", "advice": "Enjoy today's good moments."},
+    {"name": "The Moon", "symbol": "🌙", "meaning": "Not everything is clear yet.", "advice": "Give yourself time before choosing."},
+    {"name": "The World", "symbol": "🌎", "meaning": "A cycle may be reaching completion.", "advice": "Celebrate progress."}
 ]
 
 # ============================================================
-# REQUEST MODELS
+# PYDANTIC PARSING MODELS
 # ============================================================
 
 class PushSubscription(BaseModel):
@@ -218,7 +151,7 @@ class UnsubscribeRequest(BaseModel):
     endpoint: str
 
 # ============================================================
-# HELPERS
+# INTERNAL ALGORITHMS
 # ============================================================
 
 def get_today():
@@ -249,85 +182,35 @@ def get_daily_content(horoscope_name):
         "quote": get_daily_quote()
     }
 
-def get_notification_content(horoscope_name, language="en"):
-    data = get_daily_content(horoscope_name)
-    if not data:
-        return None
-
-    horoscope = data["horoscope"]
-    tarot = data["tarot"]
-    quote = data["quote"]
-
-    title = "Daily Aura ✨"
-    body = (
-        f'{horoscope["symbol"]} {horoscope_name} Horoscope: '
-        f'{horoscope["reading"]} '
-        f'🃏 Tarot: {tarot["name"]} '
-        f'✨ Quote: "{quote}"'
-    )
-
-    return {
-        "title": title,
-        "body": body,
-        "url": "/",
-        "tarot": tarot["name"],
-        "quote": quote
-    }
-
 # ============================================================
-# PUSH NOTIFICATION SENDER
-# ============================================================
-
-def send_notification(user_data):
-    if not VAPID_PRIVATE_KEY:
-        print("VAPID_PRIVATE_KEY is not configured.")
-        return False
-
-    if not PYWEBPUSH_AVAILABLE:
-        print("pywebpush is not installed.")
-        return False
-
-    subscription = user_data["subscription"]
-    horoscope_name = user_data["horoscope"]
-    language = user_data.get("language", "en")
-
-    content = get_notification_content(horoscope_name, language)
-    if not content:
-        return False
-
-    payload = {
-        "title": content["title"],
-        "body": content["body"],
-        "url": content["url"],
-        "tarot": content["tarot"],
-        "quote": content["quote"]
-    }
-
-    try:
-        webpush(
-            subscription_info=subscription,
-            data=json.dumps(payload),
-            vapid_private_key=VAPID_PRIVATE_KEY,
-            vapid_claims={
-                "sub": VAPID_EMAIL
-            }
-        )
-        return True
-
-    except WebPushException as error:
-        print("Push notification failed:", error)
-        return False
-    except Exception as error:
-        print("Unexpected notification error:", error)
-        return False
-
-# ============================================================
-# API ROUTE PATHS
+# INTERACTIVE API ROUTE PATHS
 # ============================================================
 
 @app.get("/")
-def home():
-    return {"status": "online", "message": "Welcome to Daily Aura"}
+def health_check():
+    return {"status": "healthy", "service": "Daily Aura"}
 
 @app.get("/api/daily/{horoscope_name}")
 def get_daily_dashboard(horoscope_name: str):
+    name = horoscope_name.capitalize()
+    content = get_daily_content(name)
+    if not content:
+        raise HTTPException(status_code=404, detail="Horoscope sign not found")
+    return content
+
+@app.post("/api/subscribe")
+def subscribe(data: SubscribeRequest):
+    endpoint = data.subscription.endpoint
+    subscriptions[endpoint] = {
+        "subscription": data.subscription.model_dump(),
+        "horoscope": data.horoscope.capitalize(),
+        "language": data.language
+    }
+    return {"message": "Subscribed successfully"}
+
+@app.post("/api/unsubscribe")
+def unsubscribe(data: UnsubscribeRequest):
+    if data.endpoint in subscriptions:
+        del subscriptions[data.endpoint]
+        return {"message": "Unsubscribed successfully"}
+    raise HTTPException(status_code=404, detail="Endpoint not found")
