@@ -1,356 +1,206 @@
+```python
 import os
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
 import httpx
-
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-# ============================================================
 
+# ============================================================
 # DAILY AURA BACKEND
-
 # ============================================================
 
-APP_NAME = "Daily Aura"
 TIMEZONE = ZoneInfo("Asia/Kathmandu")
 
-# ============================================================
-
-# APP
-
-# ============================================================
-
 app = FastAPI(
-title="Daily Aura API",
-version="4.0.0"
+    title="Daily Aura API",
+    version="3.0.0"
 )
+
+
+# ============================================================
+# CORS
+# ============================================================
 
 app.add_middleware(
-CORSMiddleware,
-allow_origins=["*"],
-allow_credentials=False,
-allow_methods=["*"],
-allow_headers=["*"]
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
+
 # ============================================================
-
-# HOROSCOPE DATA
-
+# HOROSCOPES
 # ============================================================
 
 HOROSCOPES = {
-"Aries": {
-"symbol": "♈",
-"vedic": "Mesha",
-"reading": (
-"Today encourages initiative and confident decisions. "
-"Trust your ideas, but give yourself enough time to think "
-"before taking an important step."
-)
-},
-"Taurus": {
-"symbol": "♉",
-"vedic": "Vrishabha",
-"reading": (
-"Steady progress is more valuable than rushing today. "
-"Focus on one practical goal and let consistency work "
-"in your favor."
-)
-},
-"Gemini": {
-"symbol": "♊",
-"vedic": "Mithuna",
-"reading": (
-"Communication can open an unexpected door today. "
-"Listen carefully and don't underestimate the value "
-"of a simple conversation."
-)
-},
-"Cancer": {
-"symbol": "♋",
-"vedic": "Karka",
-"reading": (
-"Your intuition may be especially noticeable today. "
-"Give yourself some quiet space and pay attention to "
-"what feels important."
-)
-},
-"Leo": {
-"symbol": "♌",
-"vedic": "Simha",
-"reading": (
-"Confidence can help you stand out today. "
-"Use your energy positively and remember that leadership "
-"also means listening."
-)
-},
-"Virgo": {
-"symbol": "♍",
-"vedic": "Kanya",
-"reading": (
-"Small improvements can make a noticeable difference. "
-"Organize your priorities and avoid spending energy "
-"on things that do not matter."
-)
-},
-"Libra": {
-"symbol": "♎",
-"vedic": "Tula",
-"reading": (
-"Balance is the theme of the day. "
-"Consider both your own needs and the needs of people "
-"around you before making a decision."
-)
-},
-"Scorpio": {
-"symbol": "♏",
-"vedic": "Vrishchika",
-"reading": (
-"Determination is strong today. "
-"Choose one meaningful objective and put your attention "
-"there instead of trying to solve everything at once."
-)
-},
-"Sagittarius": {
-"symbol": "♐",
-"vedic": "Dhanu",
-"reading": (
-"Curiosity can lead you somewhere interesting today. "
-"Explore a new idea or look at an old problem from "
-"a different angle."
-)
-},
-"Capricorn": {
-"symbol": "♑",
-"vedic": "Makara",
-"reading": (
-"Long-term thinking works in your favor today. "
-"A small practical action now can support a larger "
-"goal later."
-)
-},
-"Aquarius": {
-"symbol": "♒",
-"vedic": "Kumbha",
-"reading": (
-"An unusual idea may deserve your attention today. "
-"Don't immediately dismiss something simply because "
-"it is different."
-)
-},
-"Pisces": {
-"symbol": "♓",
-"vedic": "Meena",
-"reading": (
-"Creativity and reflection are highlighted today. "
-"Give yourself enough quiet time to understand what "
-"you really want."
-)
+    "Aries": {
+        "symbol": "♈",
+        "vedic": "Mesha",
+        "reading": "Today is a good day to take initiative. Trust your ideas and move forward with confidence."
+    },
+    "Taurus": {
+        "symbol": "♉",
+        "vedic": "Vrishabha",
+        "reading": "Patience can bring better results today. Focus on steady progress."
+    },
+    "Gemini": {
+        "symbol": "♊",
+        "vedic": "Mithuna",
+        "reading": "Communication is your strength today. A conversation may open a new opportunity."
+    },
+    "Cancer": {
+        "symbol": "♋",
+        "vedic": "Karka",
+        "reading": "Listen to your intuition today. Spend quality time with people you care about."
+    },
+    "Leo": {
+        "symbol": "♌",
+        "vedic": "Simha",
+        "reading": "Your confidence can attract attention today. Use your energy wisely."
+    },
+    "Virgo": {
+        "symbol": "♍",
+        "vedic": "Kanya",
+        "reading": "Small details matter today. Organize your priorities and stay focused."
+    },
+    "Libra": {
+        "symbol": "♎",
+        "vedic": "Tula",
+        "reading": "Balance is important today. Think carefully before making decisions."
+    },
+    "Scorpio": {
+        "symbol": "♏",
+        "vedic": "Vrishchika",
+        "reading": "Your determination is strong today. Focus that energy on one meaningful goal."
+    },
+    "Sagittarius": {
+        "symbol": "♐",
+        "vedic": "Dhanu",
+        "reading": "A fresh perspective can change your day. Stay curious and explore new ideas."
+    },
+    "Capricorn": {
+        "symbol": "♑",
+        "vedic": "Makara",
+        "reading": "Consistent effort is your advantage today. Keep working toward your long-term goals."
+    },
+    "Aquarius": {
+        "symbol": "♒",
+        "vedic": "Kumbha",
+        "reading": "An original idea may be worth pursuing today. Share your thoughts with others."
+    },
+    "Pisces": {
+        "symbol": "♓",
+        "vedic": "Meena",
+        "reading": "Your creativity and empathy are strong today. Give yourself some quiet time."
+    }
 }
-}
+
 
 # ============================================================
-
 # FALLBACK QUOTES
-
 # ============================================================
 
-FALLBACK_QUOTES = [
-{
-"quote": "Small steps every day create big changes.",
-"author": "Daily Aura"
-},
-{
-"quote": "Your future is created by what you do today.",
-"author": "Daily Aura"
-},
-{
-"quote": "A calm mind can find a way forward.",
-"author": "Daily Aura"
-},
-{
-"quote": "Believe in the progress you cannot yet see.",
-"author": "Daily Aura"
-},
-{
-"quote": "Start where you are. Make today count.",
-"author": "Daily Aura"
-},
-{
-"quote": "You don't need to be perfect. Just keep moving.",
-"author": "Daily Aura"
-},
-{
-"quote": "Every morning is another chance to begin again.",
-"author": "Daily Aura"
-}
+QUOTES = [
+    "Small steps every day create big changes.",
+    "Your future is created by what you do today.",
+    "A calm mind can find a way forward.",
+    "Believe in the progress you cannot yet see.",
+    "Start where you are. Make today count.",
+    "You don't need to be perfect. Just keep moving.",
+    "Every morning is another chance to begin again.",
+    "Growth begins when you choose to keep going.",
+    "A new day brings a new opportunity.",
+    "Trust the process and take the next step."
 ]
 
+
 # ============================================================
-
 # TAROT
-
 # ============================================================
 
 TAROT_CARDS = [
-{
-"name": "The Fool",
-"symbol": "🌟",
-"meaning": (
-"A new beginning is opening before you. "
-"This card represents curiosity, freedom and courage."
-),
-"advice": "Don't be afraid to start something new.",
-"image_url": (
-"https://upload.wikimedia.org/wikipedia/commons/9/90/"
-"RWS_Tarot_00_Fool.jpg"
-)
-},
-{
-"name": "The Magician",
-"symbol": "✨",
-"meaning": (
-"You have useful skills and resources available to you. "
-"The focus is on turning an idea into action."
-),
-"advice": "Use what you already have and take action.",
-"image_url": (
-"https://upload.wikimedia.org/wikipedia/commons/d/de/"
-"RWS_Tarot_01_Magician.jpg"
-)
-},
-{
-"name": "The High Priestess",
-"symbol": "🌙",
-"meaning": (
-"Intuition and hidden information are emphasized. "
-"Not every answer needs to be discovered immediately."
-),
-"advice": "Slow down and listen to your intuition.",
-"image_url": (
-"https://upload.wikimedia.org/wikipedia/commons/8/88/"
-"RWS_Tarot_02_High_Priestess.jpg"
-)
-},
-{
-"name": "The Empress",
-"symbol": "🌸",
-"meaning": (
-"Growth, creativity and nurturing energy are highlighted."
-),
-"advice": "Nurture yourself and what matters to you.",
-"image_url": (
-"https://upload.wikimedia.org/wikipedia/commons/d/d2/"
-"RWS_Tarot_03_Empress.jpg"
-)
-},
-{
-"name": "The Emperor",
-"symbol": "👑",
-"meaning": (
-"Structure, responsibility and stability can help you."
-),
-"advice": "Take control of what you can.",
-"image_url": (
-"https://upload.wikimedia.org/wikipedia/commons/c/c3/"
-"RWS_Tarot_04_Emperor.jpg"
-)
-},
-{
-"name": "The Lovers",
-"symbol": "💞",
-"meaning": (
-"Connection, values and important choices are highlighted."
-),
-"advice": "Choose with honesty and intention.",
-"image_url": (
-"https://upload.wikimedia.org/wikipedia/commons/3/3a/"
-"RWS_Tarot_06_Lovers.jpg"
-)
-},
-{
-"name": "The Chariot",
-"symbol": "🏆",
-"meaning": (
-"Determination and direction can help you overcome "
-"distractions."
-),
-"advice": "Stay focused on your direction.",
-"image_url": (
-"https://upload.wikimedia.org/wikipedia/commons/9/9b/"
-"RWS_Tarot_07_Chariot.jpg"
-)
-},
-{
-"name": "Strength",
-"symbol": "🦁",
-"meaning": (
-"Strength comes through patience, confidence and "
-"self-control."
-),
-"advice": "Be patient with yourself and others.",
-"image_url": (
-"https://upload.wikimedia.org/wikipedia/commons/f/f5/"
-"RWS_Tarot_08_Strength.jpg"
-)
-},
-{
-"name": "The Star",
-"symbol": "⭐",
-"meaning": (
-"Hope, renewal and a sense of direction are emphasized."
-),
-"advice": "Let hope guide your next step.",
-"image_url": (
-"https://upload.wikimedia.org/wikipedia/commons/d/db/"
-"RWS_Tarot_17_Star.jpg"
-)
-},
-{
-"name": "The Sun",
-"symbol": "☀️",
-"meaning": (
-"Clarity, positive energy and confidence are highlighted."
-),
-"advice": "Allow yourself to enjoy today's good moments.",
-"image_url": (
-"https://upload.wikimedia.org/wikipedia/commons/1/17/"
-"RWS_Tarot_19_Sun.jpg"
-)
-},
-{
-"name": "The Moon",
-"symbol": "🌙",
-"meaning": (
-"Some situations may not be completely clear yet. "
-"Avoid rushing into conclusions."
-),
-"advice": "Look beyond first impressions.",
-"image_url": (
-"https://upload.wikimedia.org/wikipedia/commons/7/72/"
-"RWS_Tarot_18_Moon.jpg"
-)
-},
-{
-"name": "The World",
-"symbol": "🌎",
-"meaning": (
-"A cycle may be approaching completion, creating room "
-"for the next chapter."
-),
-"advice": "Recognize your progress and prepare for what's next.",
-"image_url": (
-"https://upload.wikimedia.org/wikipedia/commons/f/ff/"
-"RWS_Tarot_21_World.jpg"
-)
-}
+    {
+        "name": "The Fool",
+        "symbol": "🌟",
+        "meaning": "A new beginning is opening before you. Stay curious and trust yourself.",
+        "advice": "Do not be afraid to start something new."
+    },
+    {
+        "name": "The Magician",
+        "symbol": "✨",
+        "meaning": "You have useful skills and resources available to you.",
+        "advice": "Use what you already have and take action."
+    },
+    {
+        "name": "The High Priestess",
+        "symbol": "🌙",
+        "meaning": "Your intuition may be especially strong today.",
+        "advice": "Slow down and listen to your inner voice."
+    },
+    {
+        "name": "The Empress",
+        "symbol": "🌸",
+        "meaning": "Growth, creativity and abundance surround you.",
+        "advice": "Nurture yourself and what matters to you."
+    },
+    {
+        "name": "The Emperor",
+        "symbol": "👑",
+        "meaning": "Structure and discipline can help create stability.",
+        "advice": "Take control of what you can."
+    },
+    {
+        "name": "The Lovers",
+        "symbol": "💞",
+        "meaning": "Connection and important choices are highlighted.",
+        "advice": "Choose with honesty and intention."
+    },
+    {
+        "name": "The Chariot",
+        "symbol": "🏆",
+        "meaning": "Determination can help you move forward.",
+        "advice": "Stay focused on your direction."
+    },
+    {
+        "name": "Strength",
+        "symbol": "🦁",
+        "meaning": "Real strength comes from patience and compassion.",
+        "advice": "Be patient with yourself and others."
+    },
+    {
+        "name": "The Star",
+        "symbol": "⭐",
+        "meaning": "Hope and renewal are highlighted today.",
+        "advice": "Let hope guide your next step."
+    },
+    {
+        "name": "The Sun",
+        "symbol": "☀️",
+        "meaning": "Positive energy, clarity and confidence are highlighted.",
+        "advice": "Allow yourself to enjoy today's good moments."
+    },
+    {
+        "name": "The Moon",
+        "symbol": "🌙",
+        "meaning": "Not everything is clear yet.",
+        "advice": "Give yourself time before making important decisions."
+    },
+    {
+        "name": "The World",
+        "symbol": "🌎",
+        "meaning": "A cycle may be reaching completion.",
+        "advice": "Celebrate your progress and prepare for what comes next."
+    }
 ]
 
+
 # ============================================================
-# DAILY CONTENT HELPERS
+# DAILY HELPERS
 # ============================================================
 
 def get_today():
@@ -359,37 +209,85 @@ def get_today():
 
 def get_daily_quote():
     day_of_year = get_today().timetuple().tm_yday
-    quote = QUOTES[(day_of_year - 1) % len(QUOTES)]
 
-    if isinstance(quote, dict):
-        return str(
-            quote.get("text")
-            or quote.get("quote")
-            or quote.get("content")
-            or ""
-        )
+    quote = QUOTES[
+        (day_of_year - 1) % len(QUOTES)
+    ]
 
     return str(quote)
 
 
 def get_daily_tarot():
     day_of_year = get_today().timetuple().tm_yday
+
     return TAROT_CARDS[
         (day_of_year - 1) % len(TAROT_CARDS)
     ]
 
 
-def get_daily_content(horoscope_name):
-    horoscope = HOROSCOPES.get(horoscope_name)
+# ============================================================
+# FRESH INTERNET CONTENT
+# ============================================================
+
+async def get_internet_quote():
+    """
+    Attempts to retrieve a fresh quote from a public
+    internet API.
+
+    If the internet API is unavailable, the local
+    fallback quote is returned.
+    """
+
+    url = "https://api.quotable.io/random"
+
+    try:
+        async with httpx.AsyncClient(
+            timeout=8.0,
+            follow_redirects=True
+        ) as client:
+
+            response = await client.get(url)
+
+            if response.status_code == 200:
+
+                data = response.json()
+
+                quote = data.get("content")
+
+                if quote:
+                    return str(quote)
+
+    except Exception as error:
+        print(
+            "Internet quote unavailable:",
+            error
+        )
+
+    return get_daily_quote()
+
+
+# ============================================================
+# DAILY CONTENT
+# ============================================================
+
+async def build_daily_content(
+    horoscope_name: str
+):
+    horoscope = HOROSCOPES.get(
+        horoscope_name
+    )
 
     if not horoscope:
         return None
 
     tarot = get_daily_tarot()
-    quote = get_daily_quote()
+
+    internet_quote = await get_internet_quote()
 
     return {
         "date": get_today().date().isoformat(),
+
+        "timezone": "Asia/Kathmandu",
 
         "horoscope": {
             "name": horoscope_name,
@@ -398,483 +296,150 @@ def get_daily_content(horoscope_name):
             "reading": horoscope["reading"]
         },
 
-        "tarot": tarot,
+        "tarot": {
+            "name": tarot["name"],
+            "symbol": tarot["symbol"],
+            "meaning": tarot["meaning"],
+            "advice": tarot["advice"]
+        },
 
-        "quote": quote
+        "quote": internet_quote
     }
 
-# ============================================================
-
-# INTERNET QUOTE
 
 # ============================================================
-
-async def fetch_internet_quote():
-
-
-url = "https://zenquotes.io/api/today"
-
-try:
-
-    timeout = httpx.Timeout(8.0)
-
-    async with httpx.AsyncClient(
-        timeout=timeout,
-        follow_redirects=True
-    ) as client:
-
-        response = await client.get(url)
-
-        if response.status_code == 200:
-
-            data = response.json()
-
-            if (
-                isinstance(data, list)
-                and len(data) > 0
-            ):
-
-                item = data[0]
-
-                quote = item.get("q")
-                author = item.get("a")
-
-                if quote:
-
-                    return {
-                        "quote": quote,
-                        "author": author or "Unknown",
-                        "source": "ZenQuotes",
-                        "fresh": True
-                    }
-
-except Exception as error:
-
-    print(
-        "Internet quote error:",
-        error
-    )
-
-fallback = get_fallback_quote()
-
-return {
-    **fallback,
-    "source": "Daily Aura fallback",
-    "fresh": False
-}
-```
-
-# ============================================================
-
-# INTERNET ON THIS DAY
-
-# ============================================================
-
-async def fetch_on_this_day():
-
-```
-now = get_today()
-
-month = now.month
-day = now.day
-
-url = (
-    f"https://today.zenquotes.io/api/"
-    f"{month}/{day}"
-)
-
-try:
-
-    timeout = httpx.Timeout(8.0)
-
-    async with httpx.AsyncClient(
-        timeout=timeout,
-        follow_redirects=True
-    ) as client:
-
-        response = await client.get(url)
-
-        if response.status_code != 200:
-            return None
-
-        data = response.json()
-
-        source_data = data.get(
-            "data",
-            {}
-        )
-
-        return {
-            "source": "ZenQuotes On This Day",
-            "date": f"{month:02d}-{day:02d}",
-            "events": source_data.get(
-                "Events",
-                []
-            )[:3],
-            "births": source_data.get(
-                "Births",
-                []
-            )[:3]
-        }
-
-except Exception as error:
-
-    print(
-        "On This Day error:",
-        error
-    )
-
-return None
-```
-
-# ============================================================
-
-# BUILD DAILY CONTENT
-
-# ============================================================
-
-async def build_daily_content(
-horoscope_name: str
-):
-
-```
-horoscope = HOROSCOPES.get(
-    horoscope_name
-)
-
-if not horoscope:
-    return None
-
-quote = await fetch_internet_quote()
-
-historical = await fetch_on_this_day()
-
-tarot = get_daily_tarot()
-
-today = get_today()
-
-return {
-
-    "success": True,
-
-    "date":
-        today.date().isoformat(),
-
-    "timezone":
-        "Asia/Kathmandu",
-
-    "horoscope": {
-
-        "name":
-            horoscope_name,
-
-        "symbol":
-            horoscope["symbol"],
-
-        "vedic":
-            horoscope["vedic"],
-
-        "reading":
-            horoscope["reading"]
-    },
-
-    "tarot":
-        tarot,
-
-    "quote":
-        quote,
-
-    "internet": {
-
-        "enabled":
-            True,
-
-        "on_this_day":
-            historical
-    }
-}
-```
-
-# ============================================================
-
 # ROOT
-
 # ============================================================
 
 @app.get("/")
 async def root():
 
-```
-return {
+    return {
+        "status": "healthy",
+        "service": "Daily Aura",
+        "version": "3.0.0",
+        "timezone": "Asia/Kathmandu",
+        "features": [
+            "Daily Horoscope",
+            "Daily Tarot",
+            "Daily Quote",
+            "Fresh Internet Quote",
+            "Fallback Content"
+        ]
+    }
 
-    "status":
-        "healthy",
-
-    "service":
-        APP_NAME,
-
-    "version":
-        "4.0.0",
-
-    "timezone":
-        "Asia/Kathmandu",
-
-    "notifications":
-        False,
-
-    "internet_content":
-        True
-}
-```
 
 # ============================================================
-
 # HEALTH
-
 # ============================================================
 
 @app.get("/health")
 async def health():
 
-```
-return {
+    return {
+        "status": "healthy",
+        "service": "Daily Aura",
+        "timezone": "Asia/Kathmandu"
+    }
 
-    "status":
-        "healthy",
-
-    "service":
-        APP_NAME,
-
-    "version":
-        "4.0.0",
-
-    "timezone":
-        "Asia/Kathmandu",
-
-    "notifications":
-        False,
-
-    "internet_content":
-        True
-}
-```
 
 # ============================================================
-
 # DAILY CONTENT
-
-# ============================================================
-
-@app.get("/daily-content/{horoscope}")
-async def daily_content(
-horoscope: str
-):
-
-```
-name = horoscope.strip().capitalize()
-
-content = await build_daily_content(
-    name
-)
-
-if not content:
-
-    raise HTTPException(
-        status_code=404,
-        detail="Horoscope sign not found."
-    )
-
-return content
-```
-
-# ============================================================
-
-# COMPATIBILITY DAILY ROUTE
-
 # ============================================================
 
 @app.get("/api/daily/{horoscope_name}")
-async def api_daily(
-horoscope_name: str
+async def daily_content(
+    horoscope_name: str
 ):
 
-```
-name = (
-    horoscope_name
-    .strip()
-    .capitalize()
-)
+    name = horoscope_name.strip().capitalize()
 
-content = await build_daily_content(
-    name
-)
+    if name not in HOROSCOPES:
 
-if not content:
+        raise HTTPException(
+            status_code=404,
+            detail="Horoscope sign not found"
+        )
 
-    raise HTTPException(
-        status_code=404,
-        detail="Horoscope sign not found."
+    content = await build_daily_content(
+        name
     )
 
-return content
-```
+    return content
+
 
 # ============================================================
-
-# TAROT
-
+# COMPATIBILITY ROUTE
 # ============================================================
 
-@app.get("/daily-tarot")
-async def daily_tarot():
+@app.get("/daily-content/{horoscope_name}")
+async def daily_content_legacy(
+    horoscope_name: str
+):
 
-```
-return {
+    name = horoscope_name.strip().capitalize()
 
-    "success":
-        True,
+    if name not in HOROSCOPES:
 
-    "date":
-        get_today().date().isoformat(),
+        raise HTTPException(
+            status_code=404,
+            detail="Horoscope sign not found"
+        )
 
-    "timezone":
-        "Asia/Kathmandu",
+    return await build_daily_content(
+        name
+    )
 
-    "tarot":
-        get_daily_tarot()
-}
-```
 
 # ============================================================
-
-# QUOTE
-
+# QUOTE ONLY
 # ============================================================
 
 @app.get("/daily-quote")
 async def daily_quote():
 
-```
-return {
+    quote = await get_internet_quote()
 
-    "success":
-        True,
+    return {
+        "quote": str(quote),
+        "date": get_today().date().isoformat()
+    }
 
-    "date":
-        get_today().date().isoformat(),
-
-    "timezone":
-        "Asia/Kathmandu",
-
-    "quote":
-        await fetch_internet_quote()
-}
-```
 
 # ============================================================
-
-# ON THIS DAY
-
+# TAROT ONLY
 # ============================================================
 
-@app.get("/on-this-day")
-async def on_this_day():
+@app.get("/daily-tarot")
+async def daily_tarot():
 
-```
-data = await fetch_on_this_day()
+    return {
+        "date": get_today().date().isoformat(),
+        "tarot": get_daily_tarot()
+    }
 
-return {
-
-    "success":
-        True,
-
-    "available":
-        data is not None,
-
-    "data":
-        data
-}
-```
 
 # ============================================================
-
-# ALL HOROSCOPES
-
+# HOROSCOPE LIST
 # ============================================================
 
 @app.get("/horoscopes")
-async def all_horoscopes():
+async def horoscopes():
 
-```
-return {
+    return {
+        "signs": list(HOROSCOPES.keys())
+    }
 
-    "success":
-        True,
-
-    "date":
-        get_today().date().isoformat(),
-
-    "horoscopes": [
-
-        {
-
-            "name":
-                name,
-
-            "symbol":
-                data["symbol"],
-
-            "vedic":
-                data["vedic"]
-
-        }
-
-        for name, data
-        in HOROSCOPES.items()
-    ]
-}
-```
 
 # ============================================================
-
-# 404 HANDLER
-
+# REMOVE OLD NOTIFICATION SYSTEM
 # ============================================================
 
-@app.exception_handler(404)
-async def not_found_handler(
-request,
-exc
-):
+@app.get("/notifications")
+async def notifications_removed():
 
-```
-return {
-
-    "success":
-        False,
-
-    "error":
-        "Not Found",
-
-    "path":
-        str(request.url.path),
-
-    "available_routes": [
-
-        "/",
-
-        "/health",
-
-        "/daily-content/Aries",
-
-        "/daily-tarot",
-
-        "/daily-quote",
-
-        "/on-this-day",
-
-        "/horoscopes"
-
-    ]
-}
+    return {
+        "enabled": False,
+        "message": "Notifications have been removed from Daily Aura."
+    }
 ```
