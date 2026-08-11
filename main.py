@@ -1,10 +1,11 @@
 
 import os
+import ipaddress
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
 import httpx
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 
@@ -13,6 +14,81 @@ from fastapi.middleware.cors import CORSMiddleware
 # ============================================================
 
 TIMEZONE = ZoneInfo("Asia/Kathmandu")
+
+# ============================================================
+# TEMPORARY PREMIUM TEST ACCESS
+# ============================================================
+# Set PREMIUM_TEST_IP in Render Environment Variables.
+# Do NOT put the IP address directly in the frontend.
+# Example Render variable:
+# PREMIUM_TEST_IP=your-public-ip
+#
+# The backend compares the requesting IP with this value.
+# This is intended only for testing Premium features.
+# ============================================================
+
+PREMIUM_TEST_IP = os.getenv(
+    "PREMIUM_TEST_IP",
+    ""
+).strip()
+
+
+def get_client_ip(request: Request) -> str:
+    """
+    Get the public client IP when running behind Render's proxy.
+
+    Render normally supplies X-Forwarded-For. We use the first
+    address in that header and fall back to request.client.host.
+    """
+    forwarded_for = request.headers.get(
+        "x-forwarded-for"
+    )
+
+    if forwarded_for:
+        return forwarded_for.split(",")[0].strip()
+
+    real_ip = request.headers.get("x-real-ip")
+
+    if real_ip:
+        return real_ip.strip()
+
+    if request.client:
+        return request.client.host
+
+    return ""
+
+
+def is_premium_test_ip(request: Request) -> bool:
+    """
+    Safely compare IPv4/IPv6 addresses using ipaddress so
+    equivalent IPv6 formatting is handled correctly.
+    """
+    if not PREMIUM_TEST_IP:
+        return False
+
+    client_ip = get_client_ip(request)
+
+    if not client_ip:
+        return False
+
+    try:
+        configured_ip = ipaddress.ip_address(
+            PREMIUM_TEST_IP
+        )
+        actual_ip = ipaddress.ip_address(
+            client_ip
+        )
+
+        return configured_ip == actual_ip
+
+    except ValueError:
+        # Fallback for an invalid/malformed configured value.
+        return (
+            PREMIUM_TEST_IP.strip()
+            == client_ip.strip()
+        )
+
+
 
 app = FastAPI(
     title="Daily Aura API",
@@ -339,7 +415,13 @@ async def health():
     return {
         "status": "healthy",
         "service": "Daily Aura",
-        "timezone": "Asia/Kathmandu"
+        "version": "3.0.0",
+        "timezone": "Asia/Kathmandu",
+        "internet_content": True,
+        "push_notifications": False,
+        "premium_test_access_configured": bool(
+            PREMIUM_TEST_IP
+        )
     }
 
 
@@ -428,6 +510,62 @@ async def horoscopes():
 
     return {
         "signs": list(HOROSCOPES.keys())
+    }
+
+
+
+# ============================================================
+# PREMIUM TEST ACCESS
+# ============================================================
+
+@app.get("/premium-status")
+async def premium_status(request: Request):
+    """
+    Returns whether this request has temporary Premium test access.
+
+    The actual Premium test IP stays on the backend in Render's
+    environment variables and is never exposed to the frontend.
+    """
+    client_ip = get_client_ip(request)
+    premium = is_premium_test_ip(request)
+
+    return {
+        "premium": premium,
+        "testAccess": premium,
+        "message": (
+            "Temporary Premium test access enabled."
+            if premium
+            else "Premium purchase required."
+        )
+    }
+
+
+# ============================================================
+# DEBUG CLIENT IP
+# ============================================================
+
+@app.get("/debug-ip")
+async def debug_ip(request: Request):
+    """
+    Temporary diagnostic endpoint for Render proxy/IP testing.
+
+    Remove this endpoint before public commercial launch if you
+    do not need it anymore.
+    """
+    return {
+        "client_ip": get_client_ip(request),
+        "x_forwarded_for": request.headers.get(
+            "x-forwarded-for"
+        ),
+        "x_real_ip": request.headers.get(
+            "x-real-ip"
+        ),
+        "premium_test_configured": bool(
+            PREMIUM_TEST_IP
+        ),
+        "premium_test_match": is_premium_test_ip(
+            request
+        )
     }
 
 
